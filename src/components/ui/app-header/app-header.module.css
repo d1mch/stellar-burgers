@@ -17,6 +17,7 @@
 .link {
   display: flex;
   text-decoration: none;
+  align-items: center;
   color: var(--text-inactive-color);
 }
 
@@ -30,8 +31,13 @@
   flex-basis: 35%;
 }
 
+.link p {
+  color: inherit;
+}
+
 .logo {
   display: flex;
   align-items: center;
   margin: 0 auto;
+  text-decoration: none;
 }
