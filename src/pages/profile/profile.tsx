@@ -37,7 +37,16 @@ export const Profile: FC = () => {
         email: formValue.email,
         ...(formValue.password && { password: formValue.password })
       })
-    );
+    )
+      .unwrap()
+      .then((updatedUser) => {
+        setFormValue({
+          name: updatedUser.name,
+          email: updatedUser.email,
+          password: ''
+        });
+      })
+      .catch(() => {});
   };
 
   const handleCancel = (e: SyntheticEvent) => {

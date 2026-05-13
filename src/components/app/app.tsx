@@ -14,11 +14,13 @@ import {
   Route,
   Routes,
   useLocation,
-  useNavigate
+  useNavigate,
+  useParams
 } from 'react-router-dom';
 
 import '../../index.css';
 import styles from './app.module.css';
+import { TUser } from '../../utils/types';
 
 import {
   checkUserAuth,
@@ -42,8 +44,12 @@ import {
 type TProtectedRouteProps = {
   onlyUnAuth?: boolean;
   children: JSX.Element;
-  user: unknown;
+  user: TUser | null;
   isAuthChecked: boolean;
+};
+
+type TOrderInfoModalProps = {
+  onClose: () => void;
 };
 
 const ProtectedRoute = ({
@@ -52,19 +58,32 @@ const ProtectedRoute = ({
   user,
   isAuthChecked
 }: TProtectedRouteProps) => {
+  const location = useLocation();
   if (!isAuthChecked) {
     return null;
+  }
+
+  if (!onlyUnAuth && !user) {
+    return <Navigate to='/login' state={{ from: location }} replace />;
   }
 
   if (onlyUnAuth && user) {
     return <Navigate to='/' replace />;
   }
 
-  if (!onlyUnAuth && !user) {
-    return <Navigate to='/login' replace />;
-  }
-
   return children;
+};
+
+const OrderInfoModal = ({ onClose }: TOrderInfoModalProps) => {
+  const { number } = useParams();
+
+  const orderNumber = number ? `#${number.padStart(6, '0')}` : '';
+
+  return (
+    <Modal title={orderNumber} onClose={onClose}>
+      <OrderInfo />
+    </Modal>
+  );
 };
 
 const AppRoutes = () => {
@@ -96,140 +115,143 @@ const AppRoutes = () => {
   return (
     <div className={styles.app}>
       <AppHeader />
-      {isIngredientsLoading ? (
-        <Preloader />
-      ) : ingredientsError ? (
-        <div className={`${styles.error} text text_type_main-medium pt-4`}>
-          {ingredientsError}
-        </div>
-      ) : ingredients.length > 0 ? (
-        <>
-          <Routes location={backgroundLocation || location}>
-            <Route path='/' element={<ConstructorPage />} />
-            <Route path='/feed' element={<Feed />} />
 
-            <Route
-              path='/login'
-              element={
-                <ProtectedRoute
-                  onlyUnAuth
-                  user={user}
-                  isAuthChecked={isAuthChecked}
-                >
-                  <Login />
-                </ProtectedRoute>
-              }
-            />
+      <Routes location={backgroundLocation || location}>
+        <Route
+          path='/'
+          element={
+            isIngredientsLoading ? (
+              <Preloader />
+            ) : ingredientsError ? (
+              <div
+                className={`${styles.error} text text_type_main-medium pt-4`}
+              >
+                {ingredientsError}
+              </div>
+            ) : ingredients.length > 0 ? (
+              <ConstructorPage />
+            ) : (
+              <div
+                className={`${styles.title} text text_type_main-medium pt-4`}
+              >
+                Нет ингредиентов
+              </div>
+            )
+          }
+        />
 
-            <Route
-              path='/register'
-              element={
-                <ProtectedRoute
-                  onlyUnAuth
-                  user={user}
-                  isAuthChecked={isAuthChecked}
-                >
-                  <Register />
-                </ProtectedRoute>
-              }
-            />
+        <Route path='/feed' element={<Feed />} />
 
-            <Route
-              path='/forgot-password'
-              element={
-                <ProtectedRoute
-                  onlyUnAuth
-                  user={user}
-                  isAuthChecked={isAuthChecked}
-                >
-                  <ForgotPassword />
-                </ProtectedRoute>
-              }
-            />
+        <Route
+          path='/login'
+          element={
+            <ProtectedRoute
+              onlyUnAuth
+              user={user}
+              isAuthChecked={isAuthChecked}
+            >
+              <Login />
+            </ProtectedRoute>
+          }
+        />
 
-            <Route
-              path='/reset-password'
-              element={
-                <ProtectedRoute
-                  onlyUnAuth
-                  user={user}
-                  isAuthChecked={isAuthChecked}
-                >
-                  <ResetPassword />
-                </ProtectedRoute>
-              }
-            />
+        <Route
+          path='/register'
+          element={
+            <ProtectedRoute
+              onlyUnAuth
+              user={user}
+              isAuthChecked={isAuthChecked}
+            >
+              <Register />
+            </ProtectedRoute>
+          }
+        />
 
-            <Route
-              path='/profile'
-              element={
-                <ProtectedRoute user={user} isAuthChecked={isAuthChecked}>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
+        <Route
+          path='/forgot-password'
+          element={
+            <ProtectedRoute
+              onlyUnAuth
+              user={user}
+              isAuthChecked={isAuthChecked}
+            >
+              <ForgotPassword />
+            </ProtectedRoute>
+          }
+        />
 
-            <Route
-              path='/profile/orders'
-              element={
-                <ProtectedRoute user={user} isAuthChecked={isAuthChecked}>
-                  <ProfileOrders />
-                </ProtectedRoute>
-              }
-            />
+        <Route
+          path='/reset-password'
+          element={
+            <ProtectedRoute
+              onlyUnAuth
+              user={user}
+              isAuthChecked={isAuthChecked}
+            >
+              <ResetPassword />
+            </ProtectedRoute>
+          }
+        />
 
-            <Route path='/ingredients/:id' element={<IngredientDetails />} />
-            <Route path='/feed/:number' element={<OrderInfo />} />
+        <Route
+          path='/profile'
+          element={
+            <ProtectedRoute user={user} isAuthChecked={isAuthChecked}>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
 
-            <Route
-              path='/profile/orders/:number'
-              element={
-                <ProtectedRoute user={user} isAuthChecked={isAuthChecked}>
-                  <OrderInfo />
-                </ProtectedRoute>
-              }
-            />
+        <Route
+          path='/profile/orders'
+          element={
+            <ProtectedRoute user={user} isAuthChecked={isAuthChecked}>
+              <ProfileOrders />
+            </ProtectedRoute>
+          }
+        />
 
-            <Route path='*' element={<NotFound404 />} />
-          </Routes>
+        <Route path='/ingredients/:id' element={<IngredientDetails />} />
+        <Route path='/feed/:number' element={<OrderInfo />} />
 
-          {backgroundLocation && (
-            <Routes>
-              <Route
-                path='/ingredients/:id'
-                element={
-                  <Modal title='Детали ингредиента' onClose={closeModal}>
-                    <IngredientDetails />
-                  </Modal>
-                }
-              />
+        <Route
+          path='/profile/orders/:number'
+          element={
+            <ProtectedRoute user={user} isAuthChecked={isAuthChecked}>
+              <OrderInfo />
+            </ProtectedRoute>
+          }
+        />
 
-              <Route
-                path='/feed/:number'
-                element={
-                  <Modal title='Информация о заказе' onClose={closeModal}>
-                    <OrderInfo />
-                  </Modal>
-                }
-              />
+        <Route path='*' element={<NotFound404 />} />
+      </Routes>
 
-              <Route
-                path='/profile/orders/:number'
-                element={
-                  <ProtectedRoute user={user} isAuthChecked={isAuthChecked}>
-                    <Modal title='Информация о заказе' onClose={closeModal}>
-                      <OrderInfo />
-                    </Modal>
-                  </ProtectedRoute>
-                }
-              />
-            </Routes>
-          )}
-        </>
-      ) : (
-        <div className={`${styles.title} text text_type_main-medium pt-4`}>
-          Нет ингредиентов
-        </div>
+      {backgroundLocation && (
+        <Routes>
+          <Route
+            path='/ingredients/:id'
+            element={
+              <Modal title='Детали ингредиента' onClose={closeModal}>
+                <IngredientDetails />
+              </Modal>
+            }
+          />
+
+          <Route
+            path='/feed/:number'
+            element={<OrderInfoModal onClose={closeModal} />}
+          />
+
+          <Route
+            path='/profile/orders/:number'
+            element={
+              <ProtectedRoute user={user} isAuthChecked={isAuthChecked}>
+                <OrderInfoModal onClose={closeModal} />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
       )}
     </div>
   );
