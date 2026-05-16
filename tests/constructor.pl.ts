@@ -1,14 +1,24 @@
 import { test, expect, Page } from '@playwright/test';
 
-import ingredients from './fixtures/ingredients.json';
-import user from './fixtures/user.json';
-import order from './fixtures/order.json';
-
 const BUN_NAME = 'Краторная булка N-200i';
 const MAIN_NAME = 'Биокотлета из марсианской Магнолии';
 
+const getIngredientsSection = (page: Page) =>
+  page
+    .locator('section')
+    .filter({ hasText: 'Булки' })
+    .filter({ hasText: 'Начинки' })
+    .filter({ hasText: 'Соусы' })
+    .first();
+
+const getConstructor = (page: Page) =>
+  page
+    .locator('section')
+    .filter({ has: page.getByRole('button', { name: 'Оформить заказ' }) })
+    .first();
+
 const getIngredientCard = (page: Page, name: string) =>
-  page.locator('li').filter({ hasText: name }).first();
+  getIngredientsSection(page).locator('li').filter({ hasText: name }).first();
 
 const addIngredient = async (page: Page, name: string) => {
   await getIngredientCard(page, name)
@@ -22,30 +32,30 @@ const closeModal = async (page: Page) => {
 
 test.describe('constructor page', () => {
   test.beforeEach(async ({ page }) => {
-    await page.route('**/api/ingredients', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(ingredients)
-      });
+    await page.routeFromHAR('tests/hars/constructor.har', {
+      url: '**/api/**',
+      notFound: 'fallback'
     });
-
-    await page.goto('/');
   });
 
   test('should add bun and ingredient to constructor', async ({ page }) => {
+    await page.goto('/');
+
     await addIngredient(page, BUN_NAME);
     await addIngredient(page, MAIN_NAME);
 
-    await expect(page.getByText(`${BUN_NAME} (верх)`)).toBeVisible();
-    await expect(page.getByText(`${BUN_NAME} (низ)`)).toBeVisible();
+    const constructor = getConstructor(page);
 
-    await expect(page.getByText(MAIN_NAME)).toHaveCount(2);
+    await expect(constructor.getByText(`${BUN_NAME} (верх)`)).toBeVisible();
+    await expect(constructor.getByText(`${BUN_NAME} (низ)`)).toBeVisible();
+    await expect(constructor.getByText(MAIN_NAME)).toBeVisible();
   });
 
   test('should open and close ingredient modal by close button', async ({
     page
   }) => {
+    await page.goto('/');
+
     await getIngredientCard(page, BUN_NAME).click();
 
     const modal = page.locator('#modals');
@@ -64,22 +74,6 @@ test.describe('constructor page', () => {
   });
 
   test('should create order and clear constructor', async ({ page }) => {
-    await page.route('**/api/auth/user', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(user)
-      });
-    });
-
-    await page.route('**/api/orders', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(order)
-      });
-    });
-
     await page.context().addCookies([
       {
         name: 'accessToken',
@@ -89,11 +83,11 @@ test.describe('constructor page', () => {
       }
     ]);
 
-    await page.evaluate(() => {
+    await page.addInitScript(() => {
       localStorage.setItem('refreshToken', 'test-refresh-token');
     });
 
-    await page.reload();
+    await page.goto('/');
 
     await addIngredient(page, BUN_NAME);
     await addIngredient(page, MAIN_NAME);
@@ -106,10 +100,12 @@ test.describe('constructor page', () => {
 
     await closeModal(page);
 
-    await expect(page.getByText('Выберите булки').first()).toBeVisible();
-    await expect(page.getByText('Выберите начинку')).toBeVisible();
+    const constructor = getConstructor(page);
 
-    await expect(page.getByText(`${BUN_NAME} (верх)`)).not.toBeVisible();
-    await expect(page.getByText(`${BUN_NAME} (низ)`)).not.toBeVisible();
+    await expect(constructor.getByText('Выберите булки').first()).toBeVisible();
+    await expect(constructor.getByText('Выберите начинку')).toBeVisible();
+
+    await expect(constructor.getByText(`${BUN_NAME} (верх)`)).not.toBeVisible();
+    await expect(constructor.getByText(`${BUN_NAME} (низ)`)).not.toBeVisible();
   });
 });
